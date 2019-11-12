@@ -80,9 +80,39 @@ namespace ASPNETMVCAuthentication.Controllers
         }
 
 
-        //Verify Email LINK
+        //Verify Account
+        [HttpGet]
+        public ActionResult VerifyAccount(string id)
+        {
+            bool Status = false;
+
+            using (MyDatabaseEntities dc = new MyDatabaseEntities())
+            {
+                dc.Configuration.ValidateOnSaveEnabled = false; // This line I have added here to avoid
+                                                                // Confirm password that not match issue on save change
+                var v = dc.Users.Where(a=>a.ActivationCode == new Guid(id)).FirstOrDefault();
+                if(v != null)
+                {
+                    v.IsEmailVerified = 1;
+                    dc.SaveChanges();
+                    Status = true;
+                }
+                else
+                {
+                    ViewBag.Message = "Invalid Request";
+                }
+            }
+            ViewBag.Status = Status;
+            return View();
+        }
 
         //Login
+        [HttpGet]
+        public ActionResult Login()
+        {
+            //https://www.youtube.com/watch?v=qGbpfgVm-M4
+            return View();
+        }
 
         //Login POST
 
