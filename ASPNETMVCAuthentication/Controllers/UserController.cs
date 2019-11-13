@@ -5,6 +5,7 @@ using System.Net;
 using System.Net.Mail;
 using System.Web;
 using System.Web.Mvc;
+using System.Web.Security;
 using ASPNETMVCAuthentication.Models;
 
 namespace ASPNETMVCAuthentication.Controllers
@@ -115,8 +116,54 @@ namespace ASPNETMVCAuthentication.Controllers
         }
 
         //Login POST
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public ActionResult Login(UserLogin login, string returnUrl)
+        {
+            string message = "";
+            using (MyDatabaseEntities dc = new MyDatabaseEntities())
+            {
+                var v = dc.Users.Where(a => a.EmailID == login.EmailID).FirstOrDefault();
+                if(v != null)
+                {
+                    if (string.Compare(Crypto.Hash(login.Password), v.Password) == 0)
+                    {
+                        int timeout = login.RememberMe ? 5256000 : 20; // 5256000 = 1 year
+                        var ticket = new FormsAuthenticationTicket(login.EmailID,login.RememberMe, timeout) ;
+                        string encrypted = FormsAuthentication.Encrypt(ticket);
+                        var cookie = new HttpCookie(FormsAuthentication.FormsCookieName, encrypted);
+                        cookie.Expires = DateTime.Now.AddMinutes(timeout);
+                        cookie.HttpOnly = true;
+                        Response.Cookies.Add(cookie);
+
+                        if (Url.IsLocalUrl(returnUrl))
+                        {
+                            return Redirect(returnUrl);
+                        }
+                        else
+                        {
+                            return RedirectToAction("Index", "Home");
+                        }
+                    }
+                }
+                else
+                {
+                    message = "Invalid credential provided";
+                }
+            }
+            ViewBag.Message = message;
+            return View();
+        }
 
         //Logout
+        [Authorize]
+        [HttpPost]
+        public ActionResult Logout()
+        {
+            FormsAuthentication.SignOut();
+            return RedirectToAction("Login", "User");
+        }
+        //https://www.youtube.com/watch?v=7g2ptkiPLIg
 
 
         [NonAction]
