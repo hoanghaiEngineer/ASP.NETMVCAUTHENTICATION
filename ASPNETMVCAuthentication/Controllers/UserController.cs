@@ -275,7 +275,7 @@ namespace ASPNETMVCAuthentication.Controllers
 
             var fromEmail = new MailAddress("hoanghai.itcmu@gmail.com","Dotnet Awesome");
             var toEmail = new MailAddress(emailID);
-            var fromEmailPassword = "Hoanghai1991"; //Replace with actual password.
+            var fromEmailPassword = "*********"; //Replace with actual password.
             string subject = "Your account is successfully created";
             string body = "";
 
