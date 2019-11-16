@@ -22,5 +22,6 @@ namespace ASPNETMVCAuthentication.Models
         public string Password { get; set; }
         public int IsEmailVerified { get; set; }
         public System.Guid ActivationCode { get; set; }
+        public string ResetPasswordCode { get; set; }
     }
 }

@@ -7,6 +7,7 @@ using System.Web;
 using System.Web.Mvc;
 using System.Web.Security;
 using ASPNETMVCAuthentication.Models;
+using ASPNETMVCAuthentication.Models.Extended;
 
 namespace ASPNETMVCAuthentication.Controllers
 {
@@ -163,8 +164,98 @@ namespace ASPNETMVCAuthentication.Controllers
             FormsAuthentication.SignOut();
             return RedirectToAction("Login", "User");
         }
-        //https://www.youtube.com/watch?v=7g2ptkiPLIg
 
+        public ActionResult ForgotPassword()
+        {
+            return View();
+        }
+
+        [HttpPost]
+        public ActionResult ForgotPassword(string EmailID)
+        {
+            //Verify Email ID
+            //Generate reset password link
+            //Send Email
+            string message = "";
+            bool status = false;
+
+            using (MyDatabaseEntities dc = new MyDatabaseEntities())
+            {
+                var account = dc.Users.Where(a => a.EmailID == EmailID).FirstOrDefault();
+                if(account != null)
+                {
+                    // Send Email for reset password
+                    string resetCode = Guid.NewGuid().ToString();
+                    SendVerificationLinkEmail(account.EmailID, resetCode, "ResetPassword");
+                    account.ResetPasswordCode = resetCode;
+                    //This line I have added here to avoid confirm password not match issue,
+                    //as we had added a confirm password property
+                    //in our model class
+                    dc.Configuration.ValidateOnSaveEnabled = false;
+                    dc.SaveChanges();
+                    message = "Reset password link has been sent to your email id.";
+                }
+                else
+                {
+                    message = "Account not found";
+                }
+
+                ViewBag.message = message;
+                return View();
+            }
+        }
+
+        public ActionResult ResetPassword(string id)
+        {
+            // Verify the reset password link
+
+            // Find account associated with this link
+            //redirect to reset password page
+            using (MyDatabaseEntities dc = new MyDatabaseEntities())
+            {
+                var user = dc.Users.Where(a => a.ResetPasswordCode == id).FirstOrDefault();
+                if(user != null)
+                {
+                    ResetPasswordModel model = new ResetPasswordModel();
+                    model.ResetCode = id;
+                    return View(model);
+                }
+                else
+                {
+                    return HttpNotFound();
+                }
+            }
+        }
+
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public ActionResult ResetPassword(ResetPasswordModel model)
+        {
+            var message = "";
+            if (ModelState.IsValid)
+            {
+                using (MyDatabaseEntities dc = new MyDatabaseEntities())
+                {
+                    var user = dc.Users.Where(a => a.ResetPasswordCode == model.ResetCode).FirstOrDefault();
+                    if (user != null)
+                    {
+                        user.Password = Crypto.Hash(model.NewPassword);
+                        user.ResetPasswordCode = "";
+                        dc.Configuration.ValidateOnSaveEnabled = false;
+                        dc.SaveChanges();
+                        message = "New password updated successfull";
+                    }
+                }
+            }
+            else
+            {
+                message = "Something invalid";
+            }
+
+            ViewBag.Message = message;
+            return View(model);
+        }
+        //https://www.youtube.com/watch?v=7g2ptkiPLIg
 
         [NonAction]
         public bool IsEmailExist(string emailID)
@@ -177,19 +268,30 @@ namespace ASPNETMVCAuthentication.Controllers
         }
 
         [NonAction]
-        public void SendVerificationLinkEmail(string emailID, string activationCode)
+        public void SendVerificationLinkEmail(string emailID, string activationCode, string emailFor = "verifyAccount")
         {
-            var verifyUrl = "/User/VerifyAccount/" + activationCode;
+            var verifyUrl = "/User/" +emailFor + "/" + activationCode;
             var link = Request.Url.AbsoluteUri.Replace(Request.Url.PathAndQuery, verifyUrl);
 
             var fromEmail = new MailAddress("hoanghai.itcmu@gmail.com","Dotnet Awesome");
             var toEmail = new MailAddress(emailID);
             var fromEmailPassword = "Hoanghai1991"; //Replace with actual password.
             string subject = "Your account is successfully created";
+            string body = "";
 
-            string body = "<br/> We are excited to tell you that your account is "+
+            if(emailFor == "verifyAccount")
+            {
+                body = "<br/> We are excited to tell you that your account is " +
                 "Successfully created. Please click on the below link to verify your " +
-                "account <br/> <a href='"+link+"'>'"+link+"'</a>";
+                "account <br/> <a href='" + link + "'>'" + link + "'</a>";
+            }
+            else if(emailFor == "ResetPassword")
+            {
+                subject = "Reset Password";
+                body = "Hi,<br/><br/>We got request your account password. " +
+                    "Please click on the below link to reset your password" +
+                    "<br/><br/><a href="+link+">Reset Password link</a>";
+            }
 
             var smtp = new SmtpClient
             {
