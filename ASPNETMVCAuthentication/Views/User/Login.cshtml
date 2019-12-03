@@ -6,7 +6,6 @@
 
 <h2>Login</h2>
 
-
 @using (Html.BeginForm()) 
 {
     @Html.AntiForgeryToken()
@@ -43,6 +42,10 @@
         <div class="form-group">
             <div class="col-md-offset-2 col-md-10">
                 <input type="submit" value="Create" class="btn btn-default" />
+                <a href="/User/LoginFacebook">
+                    <i class="fa fa-facebook"></i>
+                    Facebook login
+                </a>
             </div>
         </div>
     </div>
